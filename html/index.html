@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Node OBD2</title>
+    <script src="../js/index.js"></script>
+  </head>
+  <body>
+    <h1>Hello World!</h1>
+    <div class="hostSettings">
+        <input type="text" id="hostInput" value="172.16.2.10">
+        <input type="text" id="portInput" value="35000">
+        <button type="button" id="connectButton">Connect</button>
+    </div>
+    <div class="log">
+        <textarea id="logBox" readonly rows="10" cols="100"></textarea>
+    </div>
+
+    <div class="console">
+        <input type="text" id="consoleInput">
+        <button id="consoleButton">Send</button>
+    </div>
+    <p>
+        We are using node <script>document.write(process.versions.node)</script>,
+        Chrome <script>document.write(process.versions.chrome)</script>,
+        and Electron <script>document.write(process.versions.electron)</script>.
+    </p>
+  </body>
+</html>

@@ -1,0 +1,29 @@
+{
+  "name": "nodeobd",
+  "version": "0.0.1",
+  "description": "Node/Electron based WiFi OBD2/ELM327 interface",
+  "main": "main.js",
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^4.1.1"
+  },
+  "scripts": {
+    "start": "electron ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bogie/nodeOBD2.git"
+  },
+  "keywords": [
+    "node",
+    "obd2",
+    "elm327",
+    "wifi"
+  ],
+  "author": "bawki",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bogie/nodeOBD2/issues"
+  },
+  "homepage": "https://github.com/bogie/nodeOBD2#readme"
+}
