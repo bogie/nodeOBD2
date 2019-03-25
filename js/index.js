@@ -7,7 +7,6 @@ const sendBuffer = [];
 var sendTimer;
 
 function sendData() {
-    console.log("Sendbuffer time: ",Date.now());
     if(sendBuffer.length>0)
         win.socket.write(sendBuffer.shift());
 }
@@ -50,8 +49,10 @@ window.onload = function () {
         sendToOBD2("ATRV");
     });
     win.socket.on('data', function(data){
-        data = data.toString().replace("\r","");
-        logOut('Received: '+data);
+        var raw = data.toString();
+        raw = raw.replace('\r','');
+        raw = raw.replace('>','');
+        logOut('Received: '+raw);
     });
 
     win.socket.on('close', function() {
