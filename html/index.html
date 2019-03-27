@@ -16,14 +16,19 @@
         <textarea id="logBox" readonly rows="10" cols="100"></textarea>
     </div>
 
+    <div class="Vehicle status">
+      <ul>
+        <li>Supported PIDs:</li>
+        <ul id="PIDlist">
+        </ul>
+        <li>Monitor status since PIDs cleared <span id="monitorStatus"></span></li>
+        <li>OBD Standard supported: <span id="OBDStandard"></span></li>
+      </ul>
+    </div>
+
     <div class="console">
         <input type="text" id="consoleInput">
         <button id="consoleButton">Send</button>
     </div>
-    <p>
-        We are using node <script>document.write(process.versions.node)</script>,
-        Chrome <script>document.write(process.versions.chrome)</script>,
-        and Electron <script>document.write(process.versions.electron)</script>.
-    </p>
   </body>
 </html>

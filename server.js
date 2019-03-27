@@ -414,12 +414,11 @@ function handleMode1(socket, msg) {
             response += settings.headerBytes;
         }
     }
-    response += "01";
     response += "41";
     if(msg == "00") {
         // send PID
         response += "00";
-        response += "88080010";
+        response += (947617810).toString(16);
         socket.send(response);
     }
 

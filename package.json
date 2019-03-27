@@ -3,7 +3,12 @@
   "version": "0.0.1",
   "description": "Node/Electron based WiFi OBD2/ELM327 interface",
   "main": "main.js",
-  "dependencies": {},
+  "dependencies": {
+    "chart.js": "^2.8.0",
+    "chartjs-plugin-streaming": "^1.8.0",
+    "chartjs-plugin-zoom": "^0.7.0",
+    "moment": "^2.24.0"
+  },
   "devDependencies": {
     "electron": "^4.1.1"
   },

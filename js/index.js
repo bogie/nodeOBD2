@@ -1,10 +1,32 @@
-const {remote} = require('electron');
+const { remote, ipcRenderer } = require('electron');
 const net = require('net');
 const {BrowserWindow} = remote;
 const win = BrowserWindow.getFocusedWindow();
 
+const Chart = require('chart.js');
+
 const sendBuffer = [];
 var sendTimer;
+
+
+const RPMData = [                    { 
+    x: 1553633735382,
+    y: 800
+    },
+    {
+        x: 1553633735402,
+        y: 1200
+    },{
+        x: 1553633735422,
+        y: 1800
+    },{
+        x: 1553633735442,
+        y: 2400
+    },
+    {
+        x: 1553633735462,
+        y: 6000
+    }];
 
 function sendData() {
     if(sendBuffer.length>0)
@@ -27,18 +49,32 @@ function logOut(text) {
     log.value += text + "\n";
 }
 
-window.onload = function () { 
+window.onload = function () {
+    let gwin;
+    if(gwin == null) {
+        gwin = new BrowserWindow({ width: 800, height: 800});
+        gwin.loadFile('html/graph.html');
+    }
+    gwin.on('closed', () => {
+        gwin = null;
+    })
     document.getElementById("connectButton").onclick= function() {
         var host = document.getElementById("hostInput").value;
         var port = document.getElementById("portInput").value;
         connectOBD2(host,port);
     }
+
+    document.getElementById("consoleButton").onclick = function() {
+        sendToOBD2(document.getElementById("consoleInput").value);
+    }
+
     document.getElementById("consoleInput").onkeydown = function(evt) {
         if(evt.code == "Enter"){
             sendToOBD2(document.getElementById("consoleInput").value);
         }
     }
 
+    
     win.socket = new net.Socket();
     win.socket.setEncoding("ascii");
 
@@ -52,6 +88,13 @@ window.onload = function () {
         var raw = data.toString();
         raw = raw.replace('\r','');
         raw = raw.replace('>','');
+        if(raw.startsWith('41')) {
+            console.log("Received Code1 data in index.js");
+            var data = {};
+            data.label = new Date().getTime();
+            data.data = raw.replace('41','');
+            gwin.send('newGraphData', data);
+        }
         logOut('Received: '+raw);
     });
 

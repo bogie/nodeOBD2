@@ -1,16 +1,16 @@
-const {app, BrowserWindow} = require('electron');
+const {app, BrowserWindow, ipcMain} = require('electron');
 
 let win;
 
 function createWindow () {
     // Erstellen des Browser-Fensters.
-    win = new BrowserWindow({ width: 800, height: 600 });
-  
-    // und Laden der index.html der App.
-    win.loadFile('html/index.html');
-  
+    if(win == null) {
+        win = new BrowserWindow({ width: 800, height: 600 });
+        win.loadFile('html/index.html');
+    }
+
     // Öffnen der DevTools.
-    win.webContents.openDevTools();
+    //win.webContents.openDevTools();
   
     // Ausgegeben, wenn das Fenster geschlossen wird.
     win.on('closed', () => {
@@ -19,8 +19,10 @@ function createWindow () {
       // Das ist der Zeitpunkt, an dem Sie das zugehörige Element löschen sollten.
       win = null
     });
+
+
 }
-  
+
 // Diese Methode wird aufgerufen, wenn Electron mit der
 // Initialisierung fertig ist und Browserfenster erschaffen kann.
 // Einige APIs können nur nach dem Auftreten dieses Events genutzt werden.
@@ -38,7 +40,7 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
 // Unter macOS ist es üblich ein neues Fenster der App zu erstellen, wenn
 // das Dock Icon angeklickt wird und keine anderen Fenster offen sind.
-    if (win === null) {
-        createWindow()
+    if (win === null || gwin == null) {
+        createWindow();
     }
 });
