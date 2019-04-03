@@ -12,6 +12,27 @@ function convertMonitorStatus(args) {
 
 }
 
+function convertTemperature(bytes) {
+    var temp = Number.parseInt(bytes[2],16) - 40;
+    console.log("setting temp: ",temp);
+    return temp;
+}
+
+function convertRPM(bytes) {
+    var firstRaw = 256 * Number.parseInt(bytes[2],16);
+    var secondRaw = Number.parseInt(bytes[3],16);
+    var RPM;
+    if(Number.isNaN(secondRaw)){
+        RPM = firstRaw;
+    } else {
+        RPM = firstRaw + secondRaw;
+    }
+
+    RPM = RPM/4;
+    console.log("Converted RPM: byte[2]="+bytes[2]+" byte[3]="+bytes[3]+"first="+firstRaw+" second= "+secondRaw+" total="+RPM);
+    return RPM;
+}
+
 var PIDs = {
     service01 : {
         "00": { realtime: false, name: "PIDs supported", unit: "Bitencoded", convert: convertPIDsSupported},
@@ -19,14 +40,14 @@ var PIDs = {
         "02": { realtime: false, name: "Freeze DTC"},
         "03": { realtime: false, name: "Fuel System Status"},
         "04": { realtime: true, name: "Calculated engine load"},
-        "05": { realtime: true, name: "Engine coolant temperature"},
+        "05": { realtime: true, name: "Engine coolant temperature", unit: "Celsius", convert: convertTemperature},
         "06": { realtime: true, name: "Short term fuel trim - Bank 1"},
         "07": { realtime: true, name: "Long term fuel trim - Bank 1"},
         "08": { realtime: true, name: "Short term fuel trim - Bank 2"},
         "09": { realtime: true, name: "Long term fuel trim - Bank 2"},
         "0A": { realtime: true, name: "Fuel pressure"},
         "0B": { realtime: true, name: "Intake manifold absolute pressure"},
-        "0C": { realtime: true, name: "Engine RPM"},
+        "0C": { realtime: true, name: "Engine RPM", unit: "RPM", convert: convertRPM},
         "0D": { realtime: true, name: "Vehicle Speed"},
         "0E": { realtime: true, name: "Timing Advance"},
         "0F": { realtime: true, name: "Intake air temperature"},

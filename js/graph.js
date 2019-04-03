@@ -94,22 +94,30 @@ window.onload = function() {
     ipcRenderer.on('newGraphData', (event, data) => {
         console.log("New Graph Data", data.data);
         //window.graph.data.labels.push(data.label);
-        var type = data.data.slice(0,2);
+        console.log(data);
+        var pidInfo = OBDPIDs.service01[data.data[1]];
         var idx = -1;
+        console.log("Got OBD data with type: <",data.data[1],"> and data: <",data.data[1],">");
         window.graph.data.datasets.forEach((dataset, index) => {
-            console.log("Comparing label: "+dataset.label+" with obdcode: "+ OBDPIDs.service01[type].name);
-            if(dataset.label == OBDPIDs.service01[type].name){
+            console.log("Comparing label: "+dataset.label+" with obdcode: "+ pidInfo.name);
+            if(dataset.label == pidInfo.name){
                 console.log("Found dataset index: ",index);
                 idx = index;
             }
         });
-        var value = data.data.slice(2);
 
+        // Todo: split data if multiline?
+        var value;
+        if(pidInfo.hasOwnProperty("convert")) {
+            value = pidInfo.convert(data.data);
+        } else {
+            value = data.data[2];
+        }
         if(idx<0){
             var colorName = colorNames[window.graph.data.datasets.length % colorNames.length];
             var newColor = chartColors[colorName];
             const ds = {
-                label: OBDPIDs.service01[type].name,
+                label: OBDPIDs.service01[data.data[1]].name,
                 backgroundColor: color(newColor).alpha(0.5).rgbString(),
                 borderColor: newColor,
                 fill: false,
@@ -119,7 +127,7 @@ window.onload = function() {
             idx = (window.graph.data.datasets.push(ds) - 1);
             console.log("Added new dataset: ", ds.label," at idx: ",idx);
         }
-        window.graph.data.datasets[idx].data.push({ x: data.label, y: Number.parseInt(value,16)});
+        window.graph.data.datasets[idx].data.push({ x: data.label, y: value});
         window.graph.update();
     });
 }
