@@ -20,16 +20,15 @@ function convertTemperature(bytes) {
 
 function convertRPM(bytes) {
     var firstRaw = 256 * Number.parseInt(bytes[2],16);
-    var secondRaw = Number.parseInt(bytes[3],16);
+    var secondRaw;
     var RPM;
-    if(Number.isNaN(secondRaw)){
-        RPM = firstRaw;
-    } else {
-        RPM = firstRaw + secondRaw;
-    }
 
-    RPM = RPM/4;
-    console.log("Converted RPM: byte[2]="+bytes[2]+" byte[3]="+bytes[3]+"first="+firstRaw+" second= "+secondRaw+" total="+RPM);
+    if(bytes.length>3){
+        secondRaw = Number.parseInt(bytes[3],16);
+    } else {
+        secondRaw = 0;
+    }
+    RPM = (firstRaw + secondRaw)/4;
     return RPM;
 }
 
@@ -48,9 +47,9 @@ var PIDs = {
         "0A": { realtime: true, name: "Fuel pressure"},
         "0B": { realtime: true, name: "Intake manifold absolute pressure"},
         "0C": { realtime: true, name: "Engine RPM", unit: "RPM", convert: convertRPM},
-        "0D": { realtime: true, name: "Vehicle Speed"},
+        "0D": { realtime: true, name: "Vehicle Speed", unit: "km/h", convert: function(bytes){ return Number.parseInt(bytes[2],16)}},
         "0E": { realtime: true, name: "Timing Advance"},
-        "0F": { realtime: true, name: "Intake air temperature"},
+        "0F": { realtime: true, name: "Intake air temperature", unit: "Celsius", convert: convertTemperature},
         "10": { realtime: true, name: "MAF air flow rate"},
         "11": { realtime: true, name: "Throttle position"},
         "12": { realtime: false, name: "Commanded secondary air status"},
