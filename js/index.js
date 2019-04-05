@@ -7,15 +7,15 @@ const Chart = require('../node_modules/chart.js/dist/Chart');
 
 var OBDPIDs = require("../js/OBD2_PIDS");
 
-var receiveBuffer = "";
-var subscriptions = ["0105","010C"];
-var curSub = 0;
-const sendBuffer = [];
+var receiveBuffer;
+var subscriptions;
+var curSub;
+var sendBuffer;
 var sendTimer;
 var subscriptionTimer;
-var waitingForResponse = false;
+var waitingForResponse;
 let gwin;
-var capabilities = [];
+var capabilities;
 
 
 function sendData() {
@@ -25,7 +25,10 @@ function sendData() {
         win.socket.write(data);
         waitingForResponse = true;
     } else {
-        //console.log("sendData: no data",sendBuffer);
+        win.socket.write(subscriptions[curSub]+"\r");
+        curSub++;
+        if(curSub == subscriptions.length)
+            curSub = 0;
     }
 }
 
@@ -34,10 +37,6 @@ function sendSubscriptions() {
     curSub++;
     if(curSub == subscriptions.length)
         curSub = 0;
-    /*for(var i = 0; i<subscriptions.length; i++){
-        //console.log("Writing subscription: ",subscriptions[i]);
-        win.socket.write(subscriptions[i]+"\r");
-    }*/
 }
 
 function connectOBD2(host,port) {
@@ -65,32 +64,61 @@ function handleRealtimeData(bytes) {
 }
 
 function setPidsSupported(bytes) {
-    var pidInfo = OBDPIDs.service01[bytes[1]];
+    var pidInfo = OBDPIDs.service01["01"];
     var pidList = document.getElementById("PIDList");
-    for(var i = 2; i < bytes.length; i++) {
-        var bit = bytes[i];
-        console.log("PIDSupported found bit at index: "+i+" with value: "+pidInfo.convert(bit));
+
+    var pids = pidInfo.convert(bytes);
+    console.log("setPidsSupported: ",pids);
+    for(var i = 0; i < pids.length; i++) {
+        if(pids[i] == "1") {
+            var idx = i.toString(16);
+            if(i<10)
+                idx = "0"+i.toString(16);
+            var pid = OBDPIDs.service01[idx];
+            var node = document.createElement("li");
+            var nodeText = document.createTextNode(pid.name);
+            node.appendChild(nodeText);
+            if(pid.realtime) {
+                var checkBoxNode = document.createElement("input");
+                checkBoxNode.setAttribute("type","checkbox");
+                checkBoxNode.setAttribute("id",pid.name);
+                node.appendChild(checkBoxNode);
+            }
+            pidList.appendChild(node);
+        }
     }
     capabilities = bytes;
 }
 
 function mode1_freezeDTC(bytes) {
-
+    logOut("DTC freeze successfull");
 }
 
 function mode1_statusDTC(bytes) {
-
+    var pidInfo = OBDPIDs.service01["01"];
+    var status = pidInfo.convert(bytes);
+    logOut("Received DTC Status binary: ",status);
+    // MIL light
+    var MILstatus = document.getElementById("monitorStatus");
+    if(status[0] == "1") {
+        var numMil = Number.parseInt(status.slice(1,8),2);
+        MILstatus.innerText = "Check Engine, "+numMil+" faults";
+    } else {
+        MILstatus.innerText = "Engine OK";
+    }
 }
 
 function mode1_fuelSystemStatus(bytes) {
-
+    var pidInfo = OBDPIDs.service["03"];
+    var status = pidInfo.convert(bytes);
+    logOut("Received fuelSystemStatus: ",status);
 }
 
 function mode1_OBD2Standard(bytes) {
     var statusHtml = document.getElementById("OBDStandard");
-    var num = Number.parseInt(bytes[2],16);
+    var num = Number.parseInt(bytes[0],16);
     statusHtml.innerText = num;
-    console.log("Set OBD2Standard: ",num);
+    logOut("Set OBD2Standard: ",num);
 }
 
 function handleMode1(bytes) {
@@ -103,19 +131,19 @@ function handleMode1(bytes) {
     }
     switch(bytes[1]) {
         case "00":
-            setPidsSupported(bytes);
+            setPidsSupported(bytes.splice(0,2));
             break;
         case "01":
-            mode1_statusDTC(bytes);
+            mode1_statusDTC(bytes.splice(0,2));
             break;
         case "02":
-            mode1_freezeDTC(bytes);
+            mode1_freezeDTC(bytes.splice(0,2));
             break;
         case "03":
-            mode1_fuelSystemStatus(bytes);
+            mode1_fuelSystemStatus(bytes.splice(0,2));
             break;
         case "1C":
-            mode1_OBD2Standard(bytes);
+            mode1_OBD2Standard(bytes.splice(0,2));
             break;
         case "12":
             break;
@@ -227,6 +255,42 @@ function handleDataReceived(line) {
     }
 }
 
+function clearVehicleStatusGUI() {
+    var pidList = document.getElementById("PIDList");
+    pidList.childNodes.forEach(child => pidList.removeChild(child));
+
+    var vinLabel = document.getElementById("vinLabel");
+    vinLabel.innerText = "";
+
+    var obdLabel = document.getElementById("OBDStandard");
+    obdLabel.innerText = "";
+
+    var milList = document.getElementById("milList");
+    milList.childNodes.forEach(child => milList.removeChild(child));
+
+    var milStatus = document.getElementById("MILStatus");
+    milStatus.innerText = "Not connected";
+}
+
+function initiateELM327() {
+    waitingForResponse = false;
+    receiveBuffer = "";
+    subscriptions = ["0105","010C"];
+    curSub = 0;
+    sendBuffer = ["ATZ","ATE0","ATAT2","ATST0A","ATS0","ATL0","ATSP0","ATH0","0100","0101","0902","011C"];
+    capabilities = "";
+
+    sendTimer = setInterval(sendData,30);
+    //subscriptionTimer = setInterval(sendSubscriptions,80);
+}
+
+function resetELM327() {
+    clearInterval(sendTimer);
+    //clearInterval(subscriptionTimer);
+
+    clearVehicleStatusGUI();
+}
+
 window.onload = function () {
     if(gwin == null) {
         gwin = new BrowserWindow({ width: 800, height: 800});
@@ -262,17 +326,7 @@ window.onload = function () {
 
     logOut("Socket init");
     win.socket.on('ready', function() {
-        sendTimer = setInterval(sendData,30);
-        subscriptionTimer = setInterval(sendSubscriptions,80);
-        sendToOBD2("ATZ");
-        sendToOBD2("ATE0");
-        sendToOBD2("ATAT2");
-        sendToOBD2("ATST0A");
-        sendToOBD2("ATS0");
-        sendToOBD2("ATL0");
-        sendToOBD2("ATSP0");
-        sendToOBD2("ATH0");
-        sendToOBD2("0100");
+        initiateELM327();
     });
 
     win.socket.on('data', function(data){
@@ -306,8 +360,7 @@ window.onload = function () {
     win.socket.on('close', function() {
         logOut('Connection closed');
         connectButton.innerText = "Connect";
-        clearInterval(sendTimer);
-        clearInterval(subscriptionTimer);
+        resetELM327();
     });
     
     win.socket.on('error', function(error) {

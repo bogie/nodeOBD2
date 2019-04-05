@@ -1,15 +1,38 @@
-function convertPIDsSupported(bits) {
-    var missing = 32 - bits.toString(2).length;
+function hex2bin(bytes) {
+    var binArray = "";
+    for(var i = 0; i < bytes.length; i++) {
+        var rawBin = Number.parseInt(bytes[i],16).toString(2);
+        var missing = 8 - rawBin.length;
+        var bin = "";
+        for(var j = 0; j < missing; j++) {
+            bin += "0";
+        }
+        bin += rawBin;
+        binArray += bin;
+        console.log("hex2Bin: appending bin -> ",bin);
+    }
+    return binArray;
+}
+
+function convertPIDsSupported(bytes) {
+    /*var missing = 32 - bits.toString(2).length;
     var bin = "";
     for(var i = 0; i <missing; i++) {
         bin += "0";
     }
     bin += bits.toString(2);
-    return bin;
+    return bin;*/
+    
+    return hex2bin(bytes);
 }
 
-function convertMonitorStatus(args) {
+function convertMonitorStatus(bytes) {
+    return hex2bin(bytes);
+}
 
+function convertFuelStatus(bytes) {
+    var bin = hex2bin(bytes);
+    return {"system1": (Number.parseInt(bin[0],2)+1), "system2": (Number.parseInt(bin[1],2)+1)};
 }
 
 function convertTemperature(bytes) {
@@ -37,7 +60,7 @@ var PIDs = {
         "00": { realtime: false, name: "PIDs supported", unit: "Bitencoded", convert: convertPIDsSupported},
         "01": { realtime: false, name: "Monitor status since DTCs cleared", unit: "Bitencoded", convert: convertMonitorStatus},
         "02": { realtime: false, name: "Freeze DTC"},
-        "03": { realtime: false, name: "Fuel System Status"},
+        "03": { realtime: false, name: "Fuel System Status", unit: "Bitencoded", convert: convertFuelStatus},
         "04": { realtime: true, name: "Calculated engine load"},
         "05": { realtime: true, name: "Engine coolant temperature", unit: "Celsius", convert: convertTemperature},
         "06": { realtime: true, name: "Short term fuel trim - Bank 1"},
