@@ -17,14 +17,15 @@ var waitingForResponse;
 let gwin;
 var capabilities;
 
-
 function sendData() {
     if(sendBuffer.length > 0 && !waitingForResponse) {
         var data = sendBuffer.shift();
         console.log("Sending data to ODB2: ",data);
-        win.socket.write(data);
+        win.socket.write(data+"\r");
         waitingForResponse = true;
     } else {
+        if (subscriptions.length == 0)
+            return;
         win.socket.write(subscriptions[curSub]+"\r");
         curSub++;
         if(curSub == subscriptions.length)
@@ -47,7 +48,7 @@ function connectOBD2(host,port) {
 }
 
 function sendToOBD2(data) {
-    sendBuffer.push(data+"\r");
+    sendBuffer.push(data);
 }
 
 function logOut(text) {
@@ -67,14 +68,20 @@ function setPidsSupported(bytes) {
     var pidInfo = OBDPIDs.service01["01"];
     var pidList = document.getElementById("PIDList");
 
+    console.log("setPidsSupported recevied bytes: ",bytes);
     var pids = pidInfo.convert(bytes);
     console.log("setPidsSupported: ",pids);
     for(var i = 0; i < pids.length; i++) {
         if(pids[i] == "1") {
-            var idx = i.toString(16);
-            if(i<10)
-                idx = "0"+i.toString(16);
+            var idx = i.toString(16).toUpperCase();
+            if(idx.length == 1)
+                idx = "0"+i.toString(16).toUpperCase();
+            console.log("Receiving PID info for idx: ",idx);
             var pid = OBDPIDs.service01[idx];
+            if(pid == null) {
+                console.log("pid with idx: "+idx+" not found");
+                continue;
+            }
             var node = document.createElement("li");
             var nodeText = document.createTextNode(pid.name);
             node.appendChild(nodeText);
@@ -129,21 +136,23 @@ function handleMode1(bytes) {
         handleRealtimeData(bytes);
         return;
     }
-    switch(bytes[1]) {
+    var cmd = bytes[1];
+    bytes = bytes.slice(2,bytes.length);
+    switch(cmd) {
         case "00":
-            setPidsSupported(bytes.splice(0,2));
+            setPidsSupported(bytes);
             break;
         case "01":
-            mode1_statusDTC(bytes.splice(0,2));
+            mode1_statusDTC(bytes);
             break;
         case "02":
-            mode1_freezeDTC(bytes.splice(0,2));
+            mode1_freezeDTC(bytes);
             break;
         case "03":
-            mode1_fuelSystemStatus(bytes.splice(0,2));
+            mode1_fuelSystemStatus(bytes);
             break;
         case "1C":
-            mode1_OBD2Standard(bytes.splice(0,2));
+            mode1_OBD2Standard(bytes);
             break;
         case "12":
             break;
@@ -173,12 +182,30 @@ function handleMode9(bytes) {
     }
 }
 
+function setVoltage(bytes) {
+    var elmVoltageHTML = document.getElementById("elmVoltage");
+    elmVoltageHTML.innerText = bytes.toString().replace(",","");
+}
+
 function handleAT(bytes) {
     console.log("Received AT code: ", bytes);
+
+    var code = bytes[0];
+    value = bytes.slice(1,bytes.length);
+    switch(code) {
+        case "RV":
+            setVoltage(value);
+            break;
+        default:
+            console.log("Received unknown AT code: ",code);
+            break;
+    }
 }
 
 function setVersion(bytes) {
     console.log("Received ELM Version: ", bytes);
+    var elmVersionHTML = document.getElementById("elmVersion");
+    elmVersionHTML.innerText = bytes.slice(6,bytes.length);
 }
 
 function handleDataReceived(line) {
@@ -214,7 +241,7 @@ function handleDataReceived(line) {
     switch(bytes[0]) {
         case "AT":
             waitingForResponse = false;
-            handleAT(bytes);
+            handleAT(bytes.slice(1,bytes.length));
             break;
         case "41":
             waitingForResponse = false;
@@ -270,14 +297,20 @@ function clearVehicleStatusGUI() {
 
     var milStatus = document.getElementById("MILStatus");
     milStatus.innerText = "Not connected";
+
+    var elmVersionHTML = document.getElementById("elmVersion");
+    elmVersionHTML.innerText = "";
+
+    var elmVoltageHTML = document.getElementById("elmVoltage");
+    elmVoltageHTML.innerText = "";
 }
 
 function initiateELM327() {
     waitingForResponse = false;
     receiveBuffer = "";
-    subscriptions = ["0105","010C"];
+    subscriptions = [];
     curSub = 0;
-    sendBuffer = ["ATZ","ATE0","ATAT2","ATST0A","ATS0","ATL0","ATSP0","ATH0","0100","0101","0902","011C"];
+    sendBuffer = ["ATZ","AL1","ATE0","ATAT2","ATRV","ATST0A","ATS0","ATL0","ATSP0","ATH0","0100","0101","0902","011C"];
     capabilities = "";
 
     sendTimer = setInterval(sendData,30);
@@ -291,9 +324,13 @@ function resetELM327() {
     clearVehicleStatusGUI();
 }
 
+win.on('close', () => {
+    gwin.close();
+});
+
 window.onload = function () {
     if(gwin == null) {
-        gwin = new BrowserWindow({ width: 800, height: 800});
+        gwin = new BrowserWindow({ x: 0, y: 0, width: 800, height: 800, autoHideMenuBar: true});
         gwin.loadFile('html/graph.html');
     }
     gwin.on('closed', () => {
@@ -330,13 +367,17 @@ window.onload = function () {
     });
 
     win.socket.on('data', function(data){
+        if(gwin == null) {
+            gwin = new BrowserWindow({ parent: win, width: 800, height: 800});
+            gwin.loadFile('html/graph.html');
+        }
         var raw = receiveBuffer + data.toString("utf8");
 
         console.log("onData: data from socket is: "+data.toString("utf8")+" receiveBuffer is: "+receiveBuffer);
         var commandArray = raw.split(">");
 
         if(commandArray.length <= 1) {
-            receiveBuffer = raw;
+            receiveBuffer = commandArray[0];
         } else {
             for(var i = 0; i < commandArray.length; i++) {
                 var command = commandArray[i];
@@ -344,13 +385,28 @@ window.onload = function () {
                     continue;
                 }
 
-                var lines = command.split('\r');
-                for(var j = 0; j < lines.length; j++) {
-                    var line = lines[j];
-                    if(line === '') {
-                        continue;
+                message = message.replace(/ /g,'');
+                var lines = message.split("\r").filter(Boolean);
+                console.log(lines);
+                
+                var data = "";
+                if(message.indexOf(":")) {
+                  console.log("Multiline!");
+                  var numBytes = Number.parseInt(lines[0],16);
+                  console.log("expecting numbytes: ", numBytes);
+                  
+                  
+                  for(var i = 1; i < lines.length; i++) {
+                    data += lines[i].split(":")[1];
+                  }
+                  console.log("multiline data: ",data);
+                  handleDataReceived(data);
+                } else {
+                    // maybe this is not needed!
+                    for(var j = 0; j < lines.length; j++) {
+                        var line = lines[j];
+                        handleDataReceived(line);
                     }
-                    handleDataReceived(line);
                 }
                 receiveBuffer = '';
             }

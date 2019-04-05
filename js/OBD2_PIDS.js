@@ -1,4 +1,5 @@
 function hex2bin(bytes) {
+    console.log("hex2bin received bytes: ",bytes);
     var binArray = "";
     for(var i = 0; i < bytes.length; i++) {
         var rawBin = Number.parseInt(bytes[i],16).toString(2);
