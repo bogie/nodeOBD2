@@ -18,10 +18,92 @@ var chartColors = {
 	grey: 'rgb(201, 203, 207)'
 };
 
+var scalePosition = "left";
 var colorNames = Object.keys(chartColors);
 
 function onRefresh(chart) {
     console.log("Refresh");
+}
+
+var opts = {
+    title: {
+        display: true,
+        text: "OBD2 Data Graph"
+    },
+    scales: {
+        xAxes: [{
+            type: 'time'                
+        }],
+        yAxes: [{
+            type: 'linear',
+            position: 'left',
+            id: "dummy",
+            display: false,
+            gridLines: {
+                drawOnChartArea: true, // only want the grid lines for one axis to show up
+            },
+            min: 0,
+            max: 100
+        }]
+    },
+    responsive: true,
+    tooltips: {
+        mode: 'nearest',
+        intersect: false
+    },
+    hover: {
+        mode: 'nearest',
+        intersect: false
+    },
+    pan: {
+        enabled: true,
+        mode: 'xy',
+        rangeMin: {
+            x: null,
+            y: null
+        },
+        rangeMax: {
+            x: null,
+            y: null
+        },
+        onPan: function({chart}) { console.log("I was panned"); }
+    },
+    zoom: {
+        enabled: true,
+        drag: false,
+        mode: 'x',
+        rangeMin: {
+            x: null,
+            y: 0
+        },
+        rangeMax: {
+            x: null,
+            y: null
+        },
+        onZoom: function({chart}) { console.log("I was zoomed"); }
+    }
+}
+
+var lineChartData = {};
+
+function addYAxis(type, pidInfo) {
+    var clr = chartColors[Math.floor(Math.random() * chartColors.length)];
+    opts.scales.yAxes.push({
+        type: "linear",
+        display: true,
+        position: scalePosition,
+        id: type,
+        ticks: {
+            fontColor: clr
+        }
+    });
+    window.graph.destroy();
+    var ctx = document.getElementById("myChart").getContext("2d");
+    window.graph = Chart.Line(ctx, {
+        data: lineChartData,
+        options: opts
+    });
+    scalePosition = (scalePosition == "left") ? "right" : "left" 
 }
 
 window.onload = function() {
@@ -29,75 +111,19 @@ window.onload = function() {
     window.graph = new Chart(ctx, {
         type: 'line',
         data: {
-            datasets: [{
-                data: [],
-                cubicInterpolationMode: 'monotone',
-                label: "Engine RPM",
-                borderColor: "#3e95cd",
-                fill: false
-            }]
+            datasets: []
         },
-        options: {
-            title: {
-                display: true,
-                text: "OBD2 Data Graph"
-            },
-            scales: {
-                xAxes: [{
-                    type: 'time'                
-                }],
-                yAxes: [{
-                    ticks: {
-                        beginAtZero:true
-                    }
-                }]
-            },
-            responsive: true,
-            tooltips: {
-                mode: 'nearest',
-                intersect: false
-            },
-            hover: {
-                mode: 'nearest',
-                intersect: false
-            },
-            pan: {
-                enabled: true,
-                mode: 'xy',
-                rangeMin: {
-                    x: null,
-                    y: null
-                },
-                rangeMax: {
-                    x: null,
-                    y: null
-                },
-                onPan: function({chart}) { console.log("I was panned"); }
-            },
-            zoom: {
-                enabled: true,
-                drag: false,
-                mode: 'y',
-                rangeMin: {
-                    x: null,
-                    y: 0
-                },
-                rangeMax: {
-                    x: null,
-                    y: null
-                },
-                onZoom: function({chart}) { console.log("I was zoomed"); }
-            }
-        }
+        options: opts
     });
 
     ipcRenderer.on('newGraphData', (event, data) => {
         console.log("New Graph Data", data.data);
         //window.graph.data.labels.push(data.label);
         console.log(data);
-        var pidInfo = OBDPIDs.service01[data.data[1]];
+        var type = data.data[1];
+        var pidInfo = OBDPIDs.service01[type];
         var idx = -1;
-        console.log("Got OBD data with type: <",data.data[1],"> and data: <",data.data[1],">");
+        console.log("Got OBD data with type: <",type,"> and data: <",type,">");
         window.graph.data.datasets.forEach((dataset, index) => {
             console.log("Comparing label: "+dataset.label+" with obdcode: "+ pidInfo.name);
             if(dataset.label == pidInfo.name){
@@ -117,15 +143,20 @@ window.onload = function() {
             var colorName = colorNames[window.graph.data.datasets.length % colorNames.length];
             var newColor = chartColors[colorName];
             const ds = {
-                label: OBDPIDs.service01[data.data[1]].name,
+                label: pidInfo.name,
                 backgroundColor: color(newColor).alpha(0.5).rgbString(),
                 borderColor: newColor,
                 fill: false,
                 cubicInterpolationMode: 'monotone',
-                data: []
+                data: [],
+                yAxisID: type
             }
-            idx = (window.graph.data.datasets.push(ds) - 1);
+            idx = (window.graph.data.datasets.length);
+            window.graph.data.datasets.push(ds);
+            lineChartData.datasets = window.graph.data.datasets;
+            addYAxis(type,pidInfo);
             console.log("Added new dataset: ", ds.label," at idx: ",idx);
+            window.graph.update();
         }
         window.graph.data.datasets[idx].data.push({ x: data.label, y: value});
         window.graph.update();

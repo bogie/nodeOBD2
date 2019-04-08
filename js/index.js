@@ -1,3 +1,4 @@
+const electron = require('electron');
 const { remote, ipcRenderer } = require('electron');
 const net = require('net');
 const {BrowserWindow} = remote;
@@ -52,7 +53,15 @@ function connectOBD2(host,port) {
 }
 
 function sendToOBD2(data) {
-    sendBuffer.push(data);
+    if(data.indexOf("01") == 0) {
+        if(capabilities.includes(data.substr(2,2))) {
+            sendBuffer.push(data);
+        } else {
+            console.log("Error request not supported: ",data);
+        }
+    } else {
+        sendBuffer.push(data);
+    }
 }
 
 function logOut(text) {
@@ -82,6 +91,7 @@ function setPidsSupported(bytes) {
             var idx = num.toString(16).toUpperCase();
             if(idx.length == 1)
                 idx = "0"+num.toString(16).toUpperCase();
+            capabilities.push(idx);
             console.log("Receiving PID info for idx: ",idx);
             var pid = OBDPIDs.service01[idx];
             if(pid == null) {
@@ -94,13 +104,22 @@ function setPidsSupported(bytes) {
             if(pid.realtime) {
                 var checkBoxNode = document.createElement("input");
                 checkBoxNode.setAttribute("type","checkbox");
-                checkBoxNode.setAttribute("id",pid.name);
+                checkBoxNode.setAttribute("id",idx);
+                checkBoxNode.addEventListener('change', (event) => {
+                    var opcode = event.target.getAttribute("id");
+                    if(event.target.checked) {
+                        console.log("Checked box: ",opcode);
+                        subscriptions.push("01"+opcode);
+                    } else {
+                        console.log("Unchecked box: ", opcode);
+                        subscriptions.splice(subscriptions.indexOf("01"+opcode),1);
+                    }
+                });
                 node.appendChild(checkBoxNode);
             }
             pidList.appendChild(node);
         }
     }
-    capabilities = bytes;
 }
 
 function mode1_freezeDTC(bytes) {
@@ -324,7 +343,7 @@ function initiateELM327() {
     subscriptions = [];
     curSub = 0;
     sendBuffer = ["ATZ","ATAL1","ATE0","ATAT2","ATRV","ATST0A","ATS0","ATL0","ATSP0","ATH0","0100","0101","0902","011C"];
-    capabilities = "";
+    capabilities = ["00"];
 
     sendTimer = setInterval(sendData,30);
     //subscriptionTimer = setInterval(sendSubscriptions,80);
@@ -342,8 +361,9 @@ win.on('close', () => {
 });
 
 window.onload = function () {
+    const { width, height } = electron.screen.getPrimaryDisplay().workAreaSize;
     if(gwin == null) {
-        gwin = new BrowserWindow({ x: 0, y: 0, width: 800, height: 800, autoHideMenuBar: true});
+        gwin = new BrowserWindow({ x: width/2, y: 0, width: width/2, height: height, autoHideMenuBar: true});
         gwin.loadFile('html/graph.html');
     }
     gwin.on('closed', () => {

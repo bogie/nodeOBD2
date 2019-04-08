@@ -1,16 +1,18 @@
+const electron = require('electron');
 const {app, BrowserWindow, ipcMain} = require('electron');
 
 let win;
 
 function createWindow () {
     // Erstellen des Browser-Fensters.
+    const { width, height } = electron.screen.getPrimaryDisplay().workAreaSize;
     if(win == null) {
-        win = new BrowserWindow({ width: 800, height: 600 });
+        win = new BrowserWindow({x:0,y:0, width: width/2, height: height });
         win.loadFile('html/index.html');
     }
 
     // Öffnen der DevTools.
-    //win.webContents.openDevTools();
+    win.webContents.openDevTools();
   
     // Ausgegeben, wenn das Fenster geschlossen wird.
     win.on('closed', () => {

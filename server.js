@@ -448,11 +448,18 @@ function handleMode1(socket, msg) {
         socket.send(response);
         return;
     }
+    if(msg == "04") {
+        // Calculated Engine Load
+        response += "04";
+        response += (Math.floor(Math.random()*100)).toString(16);
+        socket.send(response);
+        return;
+    }
 
     if(msg == "05") {
         // Send ECT
         response += "05";
-        response += (40).toString(16);
+        response += (Math.floor(Math.random()*110)).toString(16);
         socket.send(response);
         return;
     }
@@ -467,14 +474,14 @@ function handleMode1(socket, msg) {
     if(msg == "0C") {
         // RPM
         response += "0C";
-        response += (4000).toString(16);
+        response += (Math.floor(Math.random()*4000)).toString(16);
         socket.send(response);
         return;
     }
     if(msg == "0D") {
         // Speed
         response += "0D";
-        response += (157).toString(16);
+        response += (Math.floor(Math.random()*200)).toString(16);
         socket.send(response);
         return;
     }
@@ -482,7 +489,7 @@ function handleMode1(socket, msg) {
     if(msg == "0F") {
         // Intake Temp AIR
         response += "0F";
-        response += (100).toString(16);
+        response += (Math.floor(Math.random()*100)).toString(16);
         socket.send(response);
         return;
     }
