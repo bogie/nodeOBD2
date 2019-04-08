@@ -502,6 +502,14 @@ function handleMode1(socket, msg) {
         return;
     }
 
+    if(msg == "20") {
+        // Extended PIDs
+        response += "20";
+        response +="CB138682";
+        socket.send(response);
+        return;
+    }
+
     socket.send("?");
 }
 

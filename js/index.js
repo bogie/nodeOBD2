@@ -54,7 +54,7 @@ function connectOBD2(host,port) {
 
 function sendToOBD2(data) {
     if(data.indexOf("01") == 0) {
-        if(capabilities.includes(data.substr(2,2))) {
+        if(capabilities & Number.parseInt(data.substr(2,2),16)) {
             sendBuffer.push(data);
         } else {
             console.log("Error request not supported: ",data);
@@ -79,19 +79,21 @@ function handleRealtimeData(bytes) {
 }
 
 function setPidsSupported(bytes) {
+    // Todo: rewrite entire Pids system to bitwise operations
     var pidInfo = OBDPIDs.service01["00"];
     var pidList = document.getElementById("PIDList");
 
     console.log("setPidsSupported recevied bytes: ",bytes);
     var pids = pidInfo.convert(bytes);
     console.log("setPidsSupported: ",pids);
+    capabilities = Number.parseInt(pids,2);
     for(var i = 0; i < pids.length; i++) {
         var num = i+1;
-        if(pids[num] == "1") {
+        console.log("pids["+num+"] is: "+pids[i]);
+        if(pids[i] == "1") {
             var idx = num.toString(16).toUpperCase();
             if(idx.length == 1)
                 idx = "0"+num.toString(16).toUpperCase();
-            capabilities.push(idx);
             console.log("Receiving PID info for idx: ",idx);
             var pid = OBDPIDs.service01[idx];
             if(pid == null) {
@@ -119,6 +121,14 @@ function setPidsSupported(bytes) {
             }
             pidList.appendChild(node);
         }
+    }
+    console.log("Parsed capabilities: ",capabilities);
+    if(capabilities & 20) {
+        console.log("requesting extended PIDS");
+        sendToOBD2("0120");
+    }
+    if(capabilities & 40) {
+        sendToOBD2("0140");
     }
 }
 
@@ -165,6 +175,8 @@ function handleMode1(bytes) {
     bytes = bytes.slice(2,bytes.length);
     switch(cmd) {
         case "00":
+        case "20":
+        case "40":
             setPidsSupported(bytes);
             break;
         case "01":
