@@ -86,16 +86,18 @@ var opts = {
 
 var lineChartData = {};
 
-function addYAxis(type, pidInfo) {
-    var clr = chartColors[Math.floor(Math.random() * chartColors.length)];
+function addYAxis(type, pidInfo,newColor) {
     opts.scales.yAxes.push({
         type: "linear",
         display: true,
         position: scalePosition,
         id: type,
         ticks: {
-            fontColor: clr
-        }
+            fontColor: newColor,
+            precision: 2
+        },
+        min: pidInfo.min,
+        max: pidInfo.max
     });
     window.graph.destroy();
     var ctx = document.getElementById("myChart").getContext("2d");
@@ -123,7 +125,7 @@ window.onload = function() {
         var type = data.data[1];
         var pidInfo = OBDPIDs.service01[type];
         var idx = -1;
-        console.log("Got OBD data with type: <",type,"> and data: <",type,">");
+        console.log("Got OBD data with type: <",type,"> and data: <",data.data[2],">");
         window.graph.data.datasets.forEach((dataset, index) => {
             console.log("Comparing label: "+dataset.label+" with obdcode: "+ pidInfo.name);
             if(dataset.label == pidInfo.name){
@@ -134,10 +136,11 @@ window.onload = function() {
 
         // Todo: split data if multiline?
         var value;
+        data.data = data.data.slice(2,data.length);
         if(pidInfo.hasOwnProperty("convert")) {
             value = pidInfo.convert(data.data);
         } else {
-            value = data.data[2];
+            value = data.data[0];
         }
         if(idx<0){
             var colorName = colorNames[window.graph.data.datasets.length % colorNames.length];
@@ -154,7 +157,7 @@ window.onload = function() {
             idx = (window.graph.data.datasets.length);
             window.graph.data.datasets.push(ds);
             lineChartData.datasets = window.graph.data.datasets;
-            addYAxis(type,pidInfo);
+            addYAxis(type,pidInfo,newColor);
             console.log("Added new dataset: ", ds.label," at idx: ",idx);
             window.graph.update();
         }
