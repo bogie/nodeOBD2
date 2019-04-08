@@ -10,7 +10,8 @@ const settings = {
     "spaces" : true,
     "adaptiveTiming" : 1,
     "protocol" : 0,
-    "lineFeed" : false
+    "lineFeed" : false,
+    "longBytes" : false
 }
 
 const version = "ELM327 v2.1";
@@ -18,7 +19,6 @@ const description = "OBDII to RS232 Interpreter";
 const identifier = "";
 
 const VIN = "WF0KXXGCBKEJ66629";
-
 
 const voltage = "12.6V";
 
@@ -80,13 +80,22 @@ server.listen(35000, () => {
     console.log("Bound on port: ",35000);
 });
 
-
+class Command {
+    constructor() {
+        this.type = -1;
+        this.OBDmode = -1;
+        this.OBDrequests = [];
+        this.header = "";
+    }
+};
 
 function onDataRcv(socket,data) {
     console.log('Received data: ', data.toString());
 
     const msg = data.toString().trim();
 
+    const resp = new Command();
+    
     if(msg.length == 1) {
         setMonitoring(socket, false);
         return;
@@ -141,6 +150,11 @@ function onDataRcv(socket,data) {
         // Headers
         if(msg.startsWith("ATH")) {
             setHeaders(socket, msg.charAt(3));
+            return;
+        }
+
+        if(msg.startsWith("ATAL")) {
+            setAllowLong(socket, msg.charAt(3));
             return;
         }
 
@@ -335,6 +349,11 @@ function setHeaders(socket, value) {
     socket.send("OK");
 }
 
+function setAllowLong(socket, value) {
+    value == 0 ? settings.longBytes = false : settings.longBytes = true;
+    socket.send("OK");
+}
+
 function setHeaderBytes(socket, value) {
     settings.headerBytes = value;
     console.log("HeaderBytes set to: ",settings.headerBytes);
@@ -418,14 +437,16 @@ function handleMode1(socket, msg) {
     if(msg == "00") {
         // send PID
         response += "00";
-        response += (947617810).toString(16);
+        response += "BFFFFFFF";
         socket.send(response);
+        return;
     }
 
     if(msg == "01") {
         response += "01";
-        response += "81076504";
+        response += "4D52118";
         socket.send(response);
+        return;
     }
 
     if(msg == "05") {
@@ -433,12 +454,14 @@ function handleMode1(socket, msg) {
         response += "05";
         response += (40).toString(16);
         socket.send(response);
+        return;
     }
 
     if(msg == "0B") {
         response += "0B";
         response += (50).toString(16);
         socket.send(response);
+        return;
     }
 
     if(msg == "0C") {
@@ -446,12 +469,14 @@ function handleMode1(socket, msg) {
         response += "0C";
         response += (4000).toString(16);
         socket.send(response);
+        return;
     }
     if(msg == "0D") {
         // Speed
         response += "0D";
         response += (157).toString(16);
         socket.send(response);
+        return;
     }
 
     if(msg == "0F") {
@@ -459,6 +484,7 @@ function handleMode1(socket, msg) {
         response += "0F";
         response += (100).toString(16);
         socket.send(response);
+        return;
     }
 
     if(msg == "1C") {
@@ -466,7 +492,10 @@ function handleMode1(socket, msg) {
         response += "1C";
         response += "06";
         socket.send(response);
+        return;
     }
+
+    socket.send("?");
 }
 
 function handleMode3(socket, msg) {
@@ -513,7 +542,7 @@ function handleMode9(socket, msg) {
 
         // CAN
         socket.write("014\r");
-        socket.write("0:"+response+"01"+VIN.substr(0,3)+"\r");
+        socket.write("0:"+response+VIN.substr(0,3)+"\r");
         socket.write("1:"+VIN.substr(3,7)+"\r");
         socket.write("2:"+VIN.substr(10,7)+"\r");
         socket.write(">\r");
