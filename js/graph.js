@@ -119,13 +119,10 @@ window.onload = function() {
     });
 
     ipcRenderer.on('newGraphData', (event, data) => {
-        console.log("New Graph Data", data.data);
-        //window.graph.data.labels.push(data.label);
-        console.log(data);
-        var type = data.data[1];
-        var pidInfo = OBDPIDs.service01[type];
+        console.log("newGraphData: data object: ",data);
+        var pidInfo = OBDPIDs.service01[data.type];
         var idx = -1;
-        console.log("Got OBD data with type: <",type,"> and data: <",data.data[2],">");
+        console.log("Got OBD data with type: <",data.type,"> and data: <",data.value,">");
         window.graph.data.datasets.forEach((dataset, index) => {
             console.log("Comparing label: "+dataset.label+" with obdcode: "+ pidInfo.name);
             if(dataset.label == pidInfo.name){
@@ -134,13 +131,11 @@ window.onload = function() {
             }
         });
 
-        // Todo: split data if multiline?
         var value;
-        data.data = data.data.slice(2,data.length);
         if(pidInfo.hasOwnProperty("convert")) {
-            value = pidInfo.convert(data.data);
+            value = pidInfo.convert(data.value);
         } else {
-            value = data.data[0];
+            value = data.value;
         }
         if(idx<0){
             var colorName = colorNames[window.graph.data.datasets.length % colorNames.length];
@@ -152,16 +147,16 @@ window.onload = function() {
                 fill: false,
                 cubicInterpolationMode: 'monotone',
                 data: [],
-                yAxisID: type
+                yAxisID: data.type
             }
             idx = (window.graph.data.datasets.length);
             window.graph.data.datasets.push(ds);
             lineChartData.datasets = window.graph.data.datasets;
-            addYAxis(type,pidInfo,newColor);
+            addYAxis(data.type,pidInfo,newColor);
             console.log("Added new dataset: ", ds.label," at idx: ",idx);
             window.graph.update();
         }
-        window.graph.data.datasets[idx].data.push({ x: data.label, y: value});
+        window.graph.data.datasets[idx].data.push({ x: data.time, y: value});
         window.graph.update();
     });
 }

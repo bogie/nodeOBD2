@@ -82,12 +82,12 @@ function convertAbsolutePressure(bytes) {
 }
 
 function convertRPM(bytes) {
-    var firstRaw = 256 * Number.parseInt(bytes[2],16);
+    var firstRaw = 256 * Number.parseInt(bytes[0],16);
     var secondRaw;
     var RPM;
 
     if(bytes.length>3){
-        secondRaw = Number.parseInt(bytes[3],16);
+        secondRaw = Number.parseInt(bytes[1],16);
     } else {
         secondRaw = 0;
     }
@@ -103,12 +103,12 @@ function convertTimingAdvance(bytes) {
 }
 
 function convertMAFairFlowRate(bytes) {
-    var firstRaw = 256 * Number.parseInt(bytes[2],16);
+    var firstRaw = 256 * Number.parseInt(bytes[0],16);
     var secondRaw;
     var flowRate;
 
     if(bytes.length>3){
-        secondRaw = Number.parseInt(bytes[3],16);
+        secondRaw = Number.parseInt(bytes[1],16);
     } else {
         secondRaw = 0;
     }

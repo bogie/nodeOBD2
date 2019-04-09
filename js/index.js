@@ -9,7 +9,7 @@ const Chart = require('../node_modules/chart.js/dist/Chart');
 var OBDPIDs = require("../js/OBD2_PIDS");
 
 var receiveBuffer;
-var subscriptions;
+const subscriptions = [];
 var curSub;
 var sendBuffer;
 var sendTimer;
@@ -27,7 +27,7 @@ function sendData() {
     } else {
         if (subscriptions.length == 0)
             return;
-        win.socket.write(subscriptions[curSub]+"\r");
+        win.socket.write("01"+subscriptions[curSub]+"\r");
         curSub++;
         if(curSub == subscriptions.length)
             curSub = 0;
@@ -39,7 +39,7 @@ function resetHard() {
 }
 
 function sendSubscriptions() {
-    win.socket.write(subscriptions[curSub]+"\r");
+    win.socket.write("01"+subscriptions[curSub]+"\r");
     curSub++;
     if(curSub == subscriptions.length)
         curSub = 0;
@@ -70,21 +70,41 @@ function logOut(text) {
     log.scrollTop = log.scrollHeight;
 }
 
-function handleRealtimeData(bytes) {
-    console.log("Received Code1 data in index.js with bytes: ",bytes);
+function handleRealtimeData(type,value) {
     var data = {};
-    data.label = new Date().getTime();
-    data.data = bytes;
+    data.time = new Date().getTime();
+    data.type = type;
+    data.value = value;
     gwin.send('newGraphData', data);
 }
 
-function setPidsSupported(bytes) {
+function onPidsClicked(elmnt) {
+    var opcode = elmnt.getAttribute("id");
+    console.log("Subscriptions pre check: ",subscriptions);
+    if(elmnt.checked) {
+        console.log("Checked box: ",opcode);
+        subscriptions.push(opcode);
+        console.log("Added new subscription: ",subscriptions);
+    } else {
+        console.log("Unchecked box: ", opcode);
+        var subIdx = subscriptions.indexOf(opcode);
+        console.log("removing subIdx:"+subIdx+" from subscriptions: ",subscriptions);
+        if(subscriptions.length > 1) {
+            subscriptions.splice(subIdx,1);
+        } else {
+            subscriptions.splice(0,subscriptions.length);
+        }
+        console.log("Subscriptions after remove: ",subscriptions);
+    }
+}
+
+function setPidsSupported(value) {
     // Todo: rewrite entire Pids system to bitwise operations
     var pidInfo = OBDPIDs.service01["00"];
     var pidList = document.getElementById("PIDList");
-
-    console.log("setPidsSupported recevied bytes: ",bytes);
-    var pids = pidInfo.convert(bytes);
+    
+    console.log("setPidsSupported recevied value: ",value);
+    var pids = pidInfo.convert(value);
     console.log("setPidsSupported: ",pids);
     capabilities = Number.parseInt(pids,2);
     for(var i = 0; i < pids.length; i++) {
@@ -107,16 +127,7 @@ function setPidsSupported(bytes) {
                 var checkBoxNode = document.createElement("input");
                 checkBoxNode.setAttribute("type","checkbox");
                 checkBoxNode.setAttribute("id",idx);
-                checkBoxNode.addEventListener('change', (event) => {
-                    var opcode = event.target.getAttribute("id");
-                    if(event.target.checked) {
-                        console.log("Checked box: ",opcode);
-                        subscriptions.push("01"+opcode);
-                    } else {
-                        console.log("Unchecked box: ", opcode);
-                        subscriptions.splice(subscriptions.indexOf("01"+opcode),1);
-                    }
-                });
+                checkBoxNode.setAttribute("onClick","onPidsClicked(this)");
                 node.appendChild(checkBoxNode);
             }
             pidList.appendChild(node);
@@ -132,13 +143,13 @@ function setPidsSupported(bytes) {
     }
 }
 
-function mode1_freezeDTC(bytes) {
+function mode1_freezeDTC(value) {
     logOut("DTC freeze successfull");
 }
 
-function mode1_statusDTC(bytes) {
+function mode1_statusDTC(value) {
     var pidInfo = OBDPIDs.service01["01"];
-    var status = pidInfo.convert(bytes);
+    var status = pidInfo.convert(value);
     logOut("Received DTC Status binary: "+status);
     // MIL light
     var MILstatus = document.getElementById("monitorStatus");
@@ -150,54 +161,59 @@ function mode1_statusDTC(bytes) {
     }
 }
 
-function mode1_fuelSystemStatus(bytes) {
+function mode1_fuelSystemStatus(value) {
     var pidInfo = OBDPIDs.service["03"];
-    var status = pidInfo.convert(bytes);
+    var status = pidInfo.convert(value);
     logOut("Received fuelSystemStatus: "+status);
 }
 
-function mode1_OBD2Standard(bytes) {
+function mode1_OBD2Standard(value) {
     var statusHtml = document.getElementById("OBDStandard");
-    var num = Number.parseInt(bytes[0],16);
+    var num = Number.parseInt(value[0],16);
     statusHtml.innerText = num;
     logOut("Set OBD2Standard: "+num);
 }
 
 function handleMode1(bytes) {
     console.log("Received mode1: ",bytes);
-    var pidInfo = OBDPIDs.service01[bytes[1]];
-    if(pidInfo.realtime == true) {
-        console.log("Received PID: "+pidInfo.name+" with data: "+bytes);
-        handleRealtimeData(bytes);
-        return;
-    }
-    var cmd = bytes[1];
-    bytes = bytes.slice(2,bytes.length);
-    switch(cmd) {
-        case "00":
-        case "20":
-        case "40":
-            setPidsSupported(bytes);
-            break;
-        case "01":
-            mode1_statusDTC(bytes);
-            break;
-        case "02":
-            mode1_freezeDTC(bytes);
-            break;
-        case "03":
-            mode1_fuelSystemStatus(bytes);
-            break;
-        case "1C":
-            mode1_OBD2Standard(bytes);
-            break;
-        case "12":
-            break;
-        case "13":
-            break;
-        default:
-            console.log("Received unknown Mode1: ",bytes[1]);
-            break;
+    while(bytes.length>0) {
+        var type = bytes.splice(0,1).toString();
+        console.log("handleMode1: received type: ",type);
+        var pidInfo = OBDPIDs.service01[type];
+        var value = bytes.splice(0,pidInfo.length);
+        console.log("handleMode1: value is ",value);
+        
+        if(pidInfo.realtime == true) {
+            console.log("Received PID: "+pidInfo.name+" with data: "+value);
+            handleRealtimeData(type,value);
+            return;
+        }
+        switch(type) {
+            case "00":
+            case "20":
+            case "40":
+                setPidsSupported(value);
+                break;
+            case "01":
+                mode1_statusDTC(value);
+                break;
+            case "02":
+                mode1_freezeDTC(value);
+                break;
+            case "03":
+                mode1_fuelSystemStatus(value);
+                break;
+            case "1C":
+                mode1_OBD2Standard(value);
+                break;
+            case "12":
+                break;
+            case "13":
+                break;
+            default:
+                console.log("Received unknown Mode1: ",type);
+                break;
+        }
     }
 }
 
@@ -280,7 +296,7 @@ function handleDataReceived(line) {
         bytes.push(line.substr(bytesNum,2));
     }
     
-    console.log("handleDataReceived converted to bytes: ", bytes);
+    //console.log("handleDataReceived converted to bytes: ", bytes);
     logOut('Received: '+line);
 
     switch(bytes[0]) {
@@ -290,7 +306,7 @@ function handleDataReceived(line) {
             break;
         case "41":
             waitingForResponse = false;
-            handleMode1(bytes);
+            handleMode1(bytes.slice(1,bytes.length));
             break;
         case "42":
             waitingForResponse = false;
@@ -352,7 +368,7 @@ function clearVehicleStatusGUI() {
 function initiateELM327() {
     waitingForResponse = false;
     receiveBuffer = "";
-    subscriptions = [];
+    subscriptions.splice(0,subscriptions.length);
     curSub = 0;
     sendBuffer = ["ATZ","ATAL1","ATE0","ATAT2","ATRV","ATST0A","ATS0","ATL0","ATSP0","ATH0","0100","0101","0902","011C"];
     capabilities = ["00"];
@@ -418,7 +434,7 @@ window.onload = function () {
         }
         var raw = receiveBuffer + data.toString("utf8");
 
-        console.log("onData: data from socket is: "+data.toString("utf8")+" receiveBuffer is: "+receiveBuffer);
+        //console.log("onData: data from socket is: "+data.toString("utf8")+" receiveBuffer is: "+receiveBuffer);
         var commandArray = raw.split(">");
 
         if(commandArray.length <= 1) {
@@ -432,19 +448,20 @@ window.onload = function () {
 
                 message = message.replace(/ /g,'');
                 var lines = message.split("\r").filter(Boolean);
-                console.log(lines);
+                if(lines.length == 0)
+                    continue;
                 
                 var data = "";
                 if(lines.length > 1 && message.indexOf(":")) {
-                  console.log("Multiline!");
+                  //console.log("Multiline!");
                   var numBytes = Number.parseInt(lines[0],16);
-                  console.log("expecting numbytes: ", numBytes);
+                  //console.log("expecting numbytes: ", numBytes);
                   
                   
                   for(var i = 1; i < lines.length; i++) {
                     data += lines[i].split(":")[1];
                   }
-                  console.log("multiline data: ",data);
+                  //console.log("multiline data: ",data);
                   handleDataReceived(data);
                 } else {
                     for(var j = 0; j < lines.length; j++) {
