@@ -1,10 +1,8 @@
-const Chart = require('../node_modules/chart.js/dist/Chart.js');
-const cz = require('../node_modules/chartjs-plugin-zoom/dist/chartjs-plugin-zoom');
-//const cjs = require('../node_modules/chartjs-plugin-streaming/dist/chartjs-plugin-streaming');
-
+const Chart = require('chart.js');
+const cz = require('chartjs-plugin-zoom');
 const { ipcRenderer } = require('electron');
 
-var OBDPIDs = require("../js/OBD2_PIDS");
+var OBDPIDs = require("../js/obd2/OBD2_PIDS");
 
 const color = Chart.helpers.color;
 
@@ -20,10 +18,6 @@ var chartColors = {
 
 var scalePosition = "left";
 var colorNames = Object.keys(chartColors);
-
-function onRefresh(chart) {
-    console.log("Refresh");
-}
 
 var opts = {
     title: {

@@ -3,11 +3,15 @@
   <head>
     <meta charset="UTF-8">
     <title>Node OBD2</title>
-    <script src="../js/index.js"></script>
+    <script src="../js/gui/index.js"></script>
   </head>
   <body>
     <h1>Hello World!</h1>
     <div class="hostSettings">
+        <select id="connectionType">
+            <option value="WiFi">WiFi</option>
+            <option value="BT">Bluetooth</option>
+        </select>
         <input type="text" id="hostInput" value="192.168.0.10">
         <input type="text" id="portInput" value="35000">
         <button type="button" id="connectButton">Connect</button>

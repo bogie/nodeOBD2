@@ -1,12 +1,12 @@
 const electron = require('electron');
-const { remote, ipcRenderer } = require('electron');
-const net = require('net');
+const { remote } = require('electron');
 const {BrowserWindow} = remote;
 const win = BrowserWindow.getFocusedWindow();
+const WiFiConnection = require('../js/net/wifi.js');
 
-const Chart = require('../node_modules/chart.js/dist/Chart');
+const Chart = require('chart.js');
 
-var OBDPIDs = require("../js/OBD2_PIDS");
+var OBDPIDs = require("../js/obd2/OBD2_PIDS");
 
 var receiveBuffer;
 const subscriptions = [];
@@ -22,20 +22,16 @@ function sendData() {
     if(sendBuffer.length > 0 && !waitingForResponse) {
         var data = sendBuffer.shift();
         console.log("Sending data to ODB2: ",data);
-        win.socket.write(data+"\r");
+        win.connection.send(data+"\r");
         waitingForResponse = true;
     } else {
         if (subscriptions.length == 0)
             return;
-        win.socket.write("01"+subscriptions[curSub]+"\r");
+        win.connection.send("01"+subscriptions[curSub]+"\r");
         curSub++;
         if(curSub == subscriptions.length)
             curSub = 0;
     }
-}
-
-function resetHard() {
-    sendToOBD2("ATPPFFOFF");
 }
 
 function sendSubscriptions() {
@@ -396,17 +392,24 @@ window.onload = function () {
     }
     gwin.on('closed', () => {
         gwin = null;
-    })
+    });
+
+    // temporary
+    win.connection = new WiFiConnection({});
     var connectButton = document.getElementById("connectButton");
     connectButton.onclick= function() {
-        var host = document.getElementById("hostInput").value;
-        var port = document.getElementById("portInput").value;
-        if(connectButton.innerText == "Connect"){
-            connectOBD2(host,port);
-            connectButton.innerText = "Disconnect";
+        if(connectButton.innerText = "Connect"){
+            var type = document.getElementById("connectionType").value;
+            if(type == "WiFi") {
+                var host = document.getElementById("hostInput").value;
+                var port = document.getElementById("portInput").value;
+                
+                win.connection.init();
+                win.connection.connect(host,port);
+            }
         } else {
-            win.socket.end();
-        }        
+            win.connection.disconnect();
+        }
     }
 
     document.getElementById("consoleButton").onclick = function() {
@@ -419,15 +422,11 @@ window.onload = function () {
         }
     }
 
-    win.socket = new net.Socket();
-    win.socket.setEncoding("ascii");
-
-    logOut("Socket init");
-    win.socket.on('ready', function() {
+    win.connection.on('ready', () => {
         initiateELM327();
     });
 
-    win.socket.on('data', function(data){
+    win.connection.on('data', function(data) {
         if(gwin == null) {
             gwin = new BrowserWindow({ parent: win, width: 800, height: 800});
             gwin.loadFile('html/graph.html');
@@ -474,13 +473,13 @@ window.onload = function () {
         }
     });
 
-    win.socket.on('close', function() {
+    win.connection.on('disconnected', function() {
         logOut('Connection closed');
         connectButton.innerText = "Connect";
         resetELM327();
     });
     
-    win.socket.on('error', function(error) {
+    win.connection.on('error', function(error) {
         logOut(error);
     });
 }
