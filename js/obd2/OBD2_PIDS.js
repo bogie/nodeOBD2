@@ -95,7 +95,7 @@ function convertRPM(bytes) {
     return RPM;
 }
 function convertSpeed(bytes) {
-    return Number.parseInt(bytes[0],16)
+    return Number.parseInt(bytes[0],16);
 }
 
 function convertTimingAdvance(bytes) {

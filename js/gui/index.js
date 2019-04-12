@@ -9,7 +9,7 @@ const Chart = require('chart.js');
 var OBDPIDs = require("../js/obd2/OBD2_PIDS");
 
 var receiveBuffer;
-const subscriptions = [];
+var subscriptions = [];
 var curSub;
 var sendBuffer;
 var sendTimer;
@@ -27,6 +27,10 @@ function sendData() {
     } else {
         if (subscriptions.length == 0)
             return;
+        // We need to do this, in case a subscription gets removed between sendData() ticks
+        if(curSub > subscriptions.length) {
+            curSub = 0;
+        }
         win.connection.send("01"+subscriptions[curSub]+"\r");
         curSub++;
         if(curSub == subscriptions.length)
@@ -78,18 +82,12 @@ function onPidsClicked(elmnt) {
     var opcode = elmnt.getAttribute("id");
     console.log("Subscriptions pre check: ",subscriptions);
     if(elmnt.checked) {
-        console.log("Checked box: ",opcode);
         subscriptions.push(opcode);
-        console.log("Added new subscription: ",subscriptions);
     } else {
         console.log("Unchecked box: ", opcode);
         var subIdx = subscriptions.indexOf(opcode);
         console.log("removing subIdx:"+subIdx+" from subscriptions: ",subscriptions);
-        if(subscriptions.length > 1) {
-            subscriptions.splice(subIdx,1);
-        } else {
-            subscriptions.splice(0,subscriptions.length);
-        }
+        subscriptions.splice(subIdx,1);
         console.log("Subscriptions after remove: ",subscriptions);
     }
 }
