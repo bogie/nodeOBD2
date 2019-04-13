@@ -1,5 +1,7 @@
 const Chart = require('chart.js');
 const cz = require('chartjs-plugin-zoom');
+const ca = require('chartjs-plugin-downsample');
+const cr = require('chartjs-plugin-streaming/dist/chartjs-plugin-streaming')
 const { ipcRenderer } = require('electron');
 
 var OBDPIDs = require("../js/obd2/OBD2_PIDS");
@@ -20,19 +22,55 @@ var scalePosition = "left";
 var colorNames = Object.keys(chartColors);
 
 var opts = {
+    elements: {
+        line: {
+            tension: 0 // disables bezier curves
+        }
+    },
     title: {
         display: true,
         text: "OBD2 Data Graph"
     },
+    downsample: {
+        enabled: true,
+        threshold: 500, // change this
+
+        auto: false, // don't re-downsample the data every move
+        onInit: true, // but do resample it when we init the chart (this is default)
+
+        preferOriginalData: true, // use our original data when downscaling so we can downscale less, if we need to.
+        restoreOriginalData: false, // if auto is false and this is true, original data will be restored on pan/zoom - that isn't what we want.
+    },
     scales: {
-        xAxes: [{
-            type: 'time'
+        xAxes: [
+            {
+            /*type: 'time',
+            distribution: 'linear',
+            time : {
+                unit: 'millisecond',
+                stepSize: 100,
+                displayFormats: {
+                    millisecond: 'ss.SSS'
+                }
+            },*/
+            type: 'realtime',
+            realtime: {         // per-axis options
+                duration: 20000,    // data in the past 20000 ms will be displayed
+                refresh: 1000,      // onRefresh callback will be called every 1000 ms
+                delay: 1000,        // delay of 1000 ms, so upcoming values are known before plotting a line
+                pause: false,       // chart is not paused
+                ttl: undefined
+            },
+            ticks: {
+                autoSkip: true,
+                maxTicksLimit: 20.1
+            }
         }],
         yAxes: [{
             type: 'linear',
             position: 'left',
             id: "dummy",
-            display: false,
+            display: true,
             gridLines: {
                 drawOnChartArea: true, // only want the grid lines for one axis to show up
             },
@@ -47,34 +85,48 @@ var opts = {
     },
     hover: {
         mode: 'nearest',
-        intersect: false
+        intersect: false,
+        animationDuration: 0 // duration of animations when hovering an item
+
     },
+    animation: {
+        duration: 0 // general animation time
+    },
+    responsiveAnimationDuration: 0,
     pan: {
         enabled: true,
-        mode: 'xy',
+        mode: 'x',
         rangeMin: {
-            x: null,
-            y: null
+            x: null
         },
         rangeMax: {
-            x: null,
-            y: null
-        },
-        onPan: function ({ chart }) { console.log("I was panned"); }
+            x: null
+        }
     },
     zoom: {
         enabled: true,
-        drag: false,
         mode: 'x',
         rangeMin: {
-            x: null,
-            y: 0
+            x: null
         },
         rangeMax: {
-            x: null,
-            y: null
-        },
-        onZoom: function ({ chart }) { console.log("I was zoomed"); }
+            x: null
+        }
+    },
+    downsample: {
+        enabled: true,
+        threshold: 200, // change this
+
+        auto: false, // don't re-downsample the data every move
+        onInit: true, // but do resample it when we init the chart (this is default)
+
+        preferOriginalData: true, // use our original data when downscaling so we can downscale less, if we need to.
+        restoreOriginalData: false, // if auto is false and this is true, original data will be restored on pan/zoom - that isn't what we want.
+    },
+    plugins: {
+        streaming: {
+            framerate: 15
+        }
     }
 }
 
@@ -113,14 +165,14 @@ window.onload = function () {
     });
 
     ipcRenderer.on('newGraphData', (event, data) => {
-        console.log("newGraphData: data object: ", data);
+        //console.log("newGraphData: data object: ", data);
         var pidInfo = OBDPIDs.service01[data.type];
         var idx = -1;
-        console.log("Got OBD data with type: <", data.type, "> and data: <", data.value, ">");
+        //console.log("Got OBD data with type: <", data.type, "> and data: <", data.value, ">");
         window.graph.data.datasets.forEach((dataset, index) => {
-            console.log("Comparing label: " + dataset.label + " with obdcode: " + pidInfo.name);
+            //console.log("Comparing label: " + dataset.label + " with obdcode: " + pidInfo.name);
             if (dataset.label == pidInfo.name) {
-                console.log("Found dataset index: ", index);
+                //console.log("Found dataset index: ", index);
                 idx = index;
             }
         });
@@ -147,10 +199,12 @@ window.onload = function () {
             window.graph.data.datasets.push(ds);
             lineChartData.datasets = window.graph.data.datasets;
             addYAxis(data.type, pidInfo, newColor);
-            console.log("Added new dataset: ", ds.label, " at idx: ", idx);
-            window.graph.update();
+            //console.log("Added new dataset: ", ds.label, " at idx: ", idx);
+            //window.graph.update(0);
         }
         window.graph.data.datasets[idx].data.push({ x: data.time, y: value });
-        window.graph.update();
+        window.graph.update({
+            preservation: true
+        });
     });
 }

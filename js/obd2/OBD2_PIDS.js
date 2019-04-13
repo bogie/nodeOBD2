@@ -65,7 +65,7 @@ function convertPercent(bytes) {
 function convertTemperature(bytes) {
     var temp = Number.parseInt(bytes[0],16);
     temp -= 40;
-    console.log("setting temp: "+temp+" from bytes: "+bytes);
+    //console.log("setting temp: "+temp+" from bytes: "+bytes);
     return temp;
 }
 

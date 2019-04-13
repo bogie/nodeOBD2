@@ -17,25 +17,34 @@ var subscriptionTimer;
 var waitingForResponse;
 let gwin;
 var capabilities;
+var sendTimerInterval;
 
 function sendData() {
     if (sendBuffer.length > 0 && !waitingForResponse) {
         var data = sendBuffer.shift();
-        console.log("Sending data to ODB2: ", data);
+        //console.log("Sending data to ODB2: ", data);
         win.connection.send(data + "\r");
         waitingForResponse = true;
     } else {
-        if (subscriptions.length == 0)
-            return;
-        // We need to do this, in case a subscription gets removed between sendData() ticks
-        if (curSub > subscriptions.length) {
-            curSub = 0;
+        if (subscriptions.length > 0) {
+            // We need to do this, in case a subscription gets removed between sendData() ticks
+            if (curSub > subscriptions.length) {
+                curSub = 0;
+            }
+            win.connection.send("01" + subscriptions[curSub] + "\r");
+            curSub++;
+            if (curSub == subscriptions.length)
+                curSub = 0;
         }
-        win.connection.send("01" + subscriptions[curSub] + "\r");
-        curSub++;
-        if (curSub == subscriptions.length)
-            curSub = 0;
     }
+    clearInterval(sendTimer);
+    if(sendTimerInterval>=20 && sendTimerInterval > win.connection.latency) {
+        sendTimerInterval = sendTimerInterval - (sendTimerInterval-win.connection.latency)*0.1;
+    }
+    var intervalDom = document.getElementById("obd2Interval");
+    intervalDom.innerText = Math.floor(sendTimerInterval).toString();
+    //console.log("sendTimer interval is: ",sendTimerInterval);
+    sendTimer = setInterval(sendData, sendTimerInterval);
 }
 
 function sendSubscriptions() {
@@ -72,7 +81,7 @@ function logOut(text) {
 
 function handleRealtimeData(type, value) {
     var data = {};
-    data.time = new Date().getTime();
+    data.time = Date.now();
     data.type = type;
     data.value = value;
     gwin.send('newGraphData', data);
@@ -366,8 +375,8 @@ function initiateELM327() {
     curSub = 0;
     sendBuffer = ["ATZ", "ATAL1", "ATE0", "ATAT2", "ATRV", "ATST0A", "ATS0", "ATL0", "ATSP0", "ATH0", "0100", "0101", "0902", "011C"];
     capabilities = ["00"];
-
-    sendTimer = setInterval(sendData, 30);
+    sendTimerInterval = 200;
+    sendTimer = setInterval(sendData, sendTimerInterval);
     //subscriptionTimer = setInterval(sendSubscriptions,80);
 }
 

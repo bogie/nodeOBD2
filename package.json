@@ -5,6 +5,7 @@
   "main": "main.js",
   "dependencies": {
     "chart.js": "^2.8.0",
+    "chartjs-plugin-downsample": "^1.1.0",
     "chartjs-plugin-streaming": "^1.8.0",
     "chartjs-plugin-zoom": "^0.7.0",
     "moment": "^2.24.0"
