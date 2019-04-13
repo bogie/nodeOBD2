@@ -1,22 +1,16 @@
 const EventEmitter = require('events');
 
-class Connection extends EventEmitter{
-    constructor(type,properties) {
+class Connection extends EventEmitter {
+    constructor(type, properties) {
         super();
         this.type = type;
         this.properties = properties;
+        this.lastMsgSent = 0;
+        this.latency = -1;
     }
 
-    newData(data) {
-        this.emit('data', data);
-    }
-
-    ready() {
-        this.emit('ready');
-    }
-
-    disconnect() {
-        this.emit('disconnected');
+    send(data) {
+        this.lastMsgSent = Date.now();
     }
 }
 

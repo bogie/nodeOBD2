@@ -7,13 +7,13 @@ var OBDPIDs = require("../js/obd2/OBD2_PIDS");
 const color = Chart.helpers.color;
 
 var chartColors = {
-	red: 'rgb(255, 99, 132)',
-	orange: 'rgb(255, 159, 64)',
-	yellow: 'rgb(255, 205, 86)',
-	green: 'rgb(75, 192, 192)',
-	blue: 'rgb(54, 162, 235)',
-	purple: 'rgb(153, 102, 255)',
-	grey: 'rgb(201, 203, 207)'
+    red: 'rgb(255, 99, 132)',
+    orange: 'rgb(255, 159, 64)',
+    yellow: 'rgb(255, 205, 86)',
+    green: 'rgb(75, 192, 192)',
+    blue: 'rgb(54, 162, 235)',
+    purple: 'rgb(153, 102, 255)',
+    grey: 'rgb(201, 203, 207)'
 };
 
 var scalePosition = "left";
@@ -26,7 +26,7 @@ var opts = {
     },
     scales: {
         xAxes: [{
-            type: 'time'                
+            type: 'time'
         }],
         yAxes: [{
             type: 'linear',
@@ -60,7 +60,7 @@ var opts = {
             x: null,
             y: null
         },
-        onPan: function({chart}) { console.log("I was panned"); }
+        onPan: function ({ chart }) { console.log("I was panned"); }
     },
     zoom: {
         enabled: true,
@@ -74,13 +74,13 @@ var opts = {
             x: null,
             y: null
         },
-        onZoom: function({chart}) { console.log("I was zoomed"); }
+        onZoom: function ({ chart }) { console.log("I was zoomed"); }
     }
 }
 
 var lineChartData = {};
 
-function addYAxis(type, pidInfo,newColor) {
+function addYAxis(type, pidInfo, newColor) {
     opts.scales.yAxes.push({
         type: "linear",
         display: true,
@@ -99,10 +99,10 @@ function addYAxis(type, pidInfo,newColor) {
         data: lineChartData,
         options: opts
     });
-    scalePosition = (scalePosition == "left") ? "right" : "left" 
+    scalePosition = (scalePosition == "left") ? "right" : "left"
 }
 
-window.onload = function() {
+window.onload = function () {
     var ctx = document.getElementById("myChart");
     window.graph = new Chart(ctx, {
         type: 'line',
@@ -113,25 +113,25 @@ window.onload = function() {
     });
 
     ipcRenderer.on('newGraphData', (event, data) => {
-        console.log("newGraphData: data object: ",data);
+        console.log("newGraphData: data object: ", data);
         var pidInfo = OBDPIDs.service01[data.type];
         var idx = -1;
-        console.log("Got OBD data with type: <",data.type,"> and data: <",data.value,">");
+        console.log("Got OBD data with type: <", data.type, "> and data: <", data.value, ">");
         window.graph.data.datasets.forEach((dataset, index) => {
-            console.log("Comparing label: "+dataset.label+" with obdcode: "+ pidInfo.name);
-            if(dataset.label == pidInfo.name){
-                console.log("Found dataset index: ",index);
+            console.log("Comparing label: " + dataset.label + " with obdcode: " + pidInfo.name);
+            if (dataset.label == pidInfo.name) {
+                console.log("Found dataset index: ", index);
                 idx = index;
             }
         });
 
         var value;
-        if(pidInfo.hasOwnProperty("convert")) {
+        if (pidInfo.hasOwnProperty("convert")) {
             value = pidInfo.convert(data.value);
         } else {
             value = data.value;
         }
-        if(idx<0){
+        if (idx < 0) {
             var colorName = colorNames[window.graph.data.datasets.length % colorNames.length];
             var newColor = chartColors[colorName];
             const ds = {
@@ -146,11 +146,11 @@ window.onload = function() {
             idx = (window.graph.data.datasets.length);
             window.graph.data.datasets.push(ds);
             lineChartData.datasets = window.graph.data.datasets;
-            addYAxis(data.type,pidInfo,newColor);
-            console.log("Added new dataset: ", ds.label," at idx: ",idx);
+            addYAxis(data.type, pidInfo, newColor);
+            console.log("Added new dataset: ", ds.label, " at idx: ", idx);
             window.graph.update();
         }
-        window.graph.data.datasets[idx].data.push({ x: data.time, y: value});
+        window.graph.data.datasets[idx].data.push({ x: data.time, y: value });
         window.graph.update();
     });
 }

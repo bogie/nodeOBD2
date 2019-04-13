@@ -3,7 +3,7 @@ const Connection = require('./connection');
 
 class WiFiConnection extends Connection {
     constructor(properties) {
-        super("WiFi",properties);
+        super("WiFi", properties);
         this.socket = null;
     }
 
@@ -16,8 +16,10 @@ class WiFiConnection extends Connection {
             //super.ready();
             super.emit('ready');
         });
+
         this.socket.on('data', (data) => {
-            super.emit('data',data);
+            this.latency = Date.now() - this.lastMsgSent;
+            super.emit('data', data);
         });
 
         this.socket.on('error', (error) => {
@@ -25,9 +27,9 @@ class WiFiConnection extends Connection {
         });
     }
 
-    connect(host,port) {
-        this.socket.connect(port,host, () => {
-            console.log("Connecting to: "+host+"@"+port);
+    connect(host, port) {
+        this.socket.connect(port, host, () => {
+            console.log("Connecting to: " + host + "@" + port);
         });
     }
 
@@ -37,7 +39,8 @@ class WiFiConnection extends Connection {
     }
 
     send(data) {
-        console.log("Sending data via WiFi, data: "+data);
+        super.send();
+        console.log("Sending data via WiFi, data: " + data);
         this.socket.write(data);
     }
 }
