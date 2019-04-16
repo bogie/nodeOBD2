@@ -1,7 +1,7 @@
 const Chart = require('chart.js');
 const cz = require('chartjs-plugin-zoom');
 const ca = require('chartjs-plugin-downsample');
-const cr = require('chartjs-plugin-streaming/dist/chartjs-plugin-streaming')
+//const cr = require('chartjs-plugin-streaming/dist/chartjs-plugin-streaming')
 const { ipcRenderer } = require('electron');
 
 var OBDPIDs = require("../js/obd2/OBD2_PIDS");
@@ -20,6 +20,7 @@ var chartColors = {
 
 var scalePosition = "left";
 var colorNames = Object.keys(chartColors);
+var startTime = -1;
 
 var opts = {
     elements: {
@@ -44,15 +45,17 @@ var opts = {
     scales: {
         xAxes: [
             {
-            /*type: 'time',
+            type: 'time',
             distribution: 'linear',
             time : {
                 unit: 'millisecond',
                 stepSize: 100,
                 displayFormats: {
                     millisecond: 'ss.SSS'
-                }
-            },*/
+                },
+            min: 0,
+            beginAtZero: true
+            },/*
             type: 'realtime',
             realtime: {         // per-axis options
                 duration: 20000,    // data in the past 20000 ms will be displayed
@@ -60,7 +63,7 @@ var opts = {
                 delay: 1000,        // delay of 1000 ms, so upcoming values are known before plotting a line
                 pause: false,       // chart is not paused
                 ttl: undefined
-            },
+            },*/
             ticks: {
                 autoSkip: true,
                 maxTicksLimit: 20.1
@@ -70,7 +73,7 @@ var opts = {
             type: 'linear',
             position: 'left',
             id: "dummy",
-            display: true,
+            display: false,
             gridLines: {
                 drawOnChartArea: true, // only want the grid lines for one axis to show up
             },
@@ -165,6 +168,12 @@ window.onload = function () {
     });
 
     ipcRenderer.on('newGraphData', (event, data) => {
+        if(startTime == -1){
+            startTime = Date.now();
+            time = 0;
+        } else {
+            time = (data.time - startTime);
+        }
         //console.log("newGraphData: data object: ", data);
         var pidInfo = OBDPIDs.service01[data.type];
         var idx = -1;
@@ -202,7 +211,7 @@ window.onload = function () {
             //console.log("Added new dataset: ", ds.label, " at idx: ", idx);
             //window.graph.update(0);
         }
-        window.graph.data.datasets[idx].data.push({ x: data.time, y: value });
+        window.graph.data.datasets[idx].data.push({ x: time, y: value });
         window.graph.update({
             preservation: true
         });

@@ -9,7 +9,7 @@ class WiFiConnection extends Connection {
 
     init() {
         this.socket = new net.Socket();
-        this.socket.setDefaultEncoding('ascii');
+        //this.socket.setEncoding('ascii');
 
         this.socket.on('ready', () => {
             console.log("ready!");

@@ -63,7 +63,9 @@ function connectOBD2(host, port) {
 
 function sendToOBD2(data) {
     if (data.indexOf("01") == 0) {
-        if (capabilities & Number.parseInt(data.substr(2, 2), 16)) {
+        var reqCode = Number.parseInt(data.substr(2, 2),16);
+        console.log("Checking reqcode: "+reqCode+" against capabilities: "+capabilities+" result: "+(capabilities&reqCode));
+        if (capabilities & reqCode) {
             sendBuffer.push(data);
         } else {
             console.log("Error request not supported: ", data);
@@ -268,9 +270,6 @@ function setVersion(bytes) {
 function handleDataReceived(line) {
     var bytesNum = 0;
     var bytes = [];
-
-    line = line.replace(/ /g, '');
-
     console.log("handleDataReceived: got line: ", line);
 
     if (line.startsWith("SEARCHING")) {
@@ -434,6 +433,7 @@ window.onload = function () {
     });
 
     win.connection.on('data', function (data) {
+        console.log("Received data: ",data);
         var latencyDom = document.getElementById("elmLatency");
         latencyDom.innerText = win.connection.latency.toString();
 
@@ -441,13 +441,20 @@ window.onload = function () {
             gwin = new BrowserWindow({ parent: win, width: 800, height: 800 });
             gwin.loadFile('html/graph.html');
         }
-        var raw = receiveBuffer + data.toString("utf8");
 
-        //console.log("onData: data from socket is: "+data.toString("utf8")+" receiveBuffer is: "+receiveBuffer);
+        data = data.toString("ascii");
+        var raw = "";
+        if(!data.includes("|"))
+            raw = receiveBuffer + data;
+
+
+        console.log("onData: data from socket is: "+data+" receiveBuffer is: "+receiveBuffer);
         var commandArray = raw.split(">");
+        console.log("onData, commandArray is: ",commandArray);
 
         if (commandArray.length <= 1) {
             receiveBuffer = commandArray[0];
+            console.log("onData, commandArray.length is <= 1 receiverbuffer is:", receiveBuffer);
         } else {
             for (var i = 0; i < commandArray.length; i++) {
                 var message = commandArray[i];
@@ -456,13 +463,15 @@ window.onload = function () {
                 }
 
                 message = message.replace(/ /g, '');
+                console.log("onData: message after removing spaces: ",message);
                 var lines = message.split("\r").filter(Boolean);
+                console.log("onData: got lines ",lines);
                 if (lines.length == 0)
                     continue;
 
                 var data = "";
-                if (lines.length > 1 && message.indexOf(":")) {
-                    //console.log("Multiline!");
+                if (lines.length > 1 && message.includes(":")) {
+                    console.log("Multiline!");
                     var numBytes = Number.parseInt(lines[0], 16);
                     //console.log("expecting numbytes: ", numBytes);
 
@@ -473,8 +482,10 @@ window.onload = function () {
                     //console.log("multiline data: ",data);
                     handleDataReceived(data);
                 } else {
+                    console.log("onData: singleLine message, lines: ",lines);
                     for (var j = 0; j < lines.length; j++) {
                         var line = lines[j];
+                        console.log("onData: calling handleDataReceived with line: ",line);
                         handleDataReceived(line);
                     }
                 }
