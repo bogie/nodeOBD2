@@ -225,18 +225,20 @@ function handleMode1(bytes) {
 function setVIN(bytes) {
     var vinLabel = document.getElementById("vinLabel");
     var vin = "";
-    for (var i = 2; i < bytes.length; i++) {
-        if (bytes[i] != "00")
-            vin += bytes[i];
+    for (var i = 0; i < bytes.length; i++) {
+        if (bytes[i] != "00"){
+            var charCode = Number.parseInt(bytes[i],16);
+            vin += String.fromCharCode(charCode);
+        }
     }
     vinLabel.innerHTML = vin;
 }
 
 function handleMode9(bytes) {
-    switch (bytes[1]) {
+    switch (bytes[0]) {
         case "02":
             waitingForResponse = false;
-            setVIN(bytes);
+            setVIN(bytes.slice(1,bytes.length));
             break;
     }
 }
@@ -333,7 +335,7 @@ function handleDataReceived(line) {
             handleMode8(bytes);
             break;
         case "49":
-            handleMode9(bytes);
+            handleMode9(bytes.slice(1,bytes.length));
             break;
         default:
             console.log("Received unhandled code: ", bytes[0]);
@@ -430,6 +432,7 @@ window.onload = function () {
 
     win.connection.on('ready', () => {
         initiateELM327();
+        connectButton.innerText = "Disconnect";
     });
 
     win.connection.on('data', function (data) {

@@ -3,6 +3,8 @@ const cz = require('chartjs-plugin-zoom');
 const ca = require('chartjs-plugin-downsample');
 //const cr = require('chartjs-plugin-streaming/dist/chartjs-plugin-streaming')
 const { ipcRenderer } = require('electron');
+const fs = require('fs');
+const {app} = require('electron').remote;
 
 var OBDPIDs = require("../js/obd2/OBD2_PIDS");
 
@@ -100,7 +102,7 @@ var opts = {
         enabled: true,
         mode: 'x',
         rangeMin: {
-            x: null
+            x: 0
         },
         rangeMax: {
             x: null
@@ -110,7 +112,7 @@ var opts = {
         enabled: true,
         mode: 'x',
         rangeMin: {
-            x: null
+            x: 0
         },
         rangeMax: {
             x: null
@@ -216,4 +218,14 @@ window.onload = function () {
             preservation: true
         });
     });
+    document.getElementById("exportButton").onclick = function () {
+        /*var date = Date.now();
+        var fileName = date +  ".obd2";
+        var content = JSON.stringify({
+            date: date, 
+            options: window.graph.options, 
+            ds: window.graph.data});
+
+        fs.writeFileSync(app.getPath("downloads")+"\\"+fileName,content);*/
+    }
 }

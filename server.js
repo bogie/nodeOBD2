@@ -562,11 +562,15 @@ function handleMode9(socket, msg) {
         // W F0KX XGCB KEJ6 6629
         response += "02";
 
+        var vinBytes = "";
+        for(var i = 0; i < VIN.length; i++) {
+            vinBytes += VIN.charCodeAt(i).toString(16);
+        }
         // CAN
         socket.write("014\r");
-        socket.write("0:"+response+VIN.substr(0,3)+"\r");
-        socket.write("1:"+VIN.substr(3,7)+"\r");
-        socket.write("2:"+VIN.substr(10,7)+"\r");
+        socket.write("0:"+response+vinBytes.substr(0,3)+"\r");
+        socket.write("1:"+vinBytes.substr(3,7)+"\r");
+        socket.write("2:"+vinBytes.substr(10,7)+"\r");
         socket.write(">\r");
 
         //J1850

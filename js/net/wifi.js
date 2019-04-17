@@ -25,6 +25,10 @@ class WiFiConnection extends Connection {
         this.socket.on('error', (error) => {
             super.emit('error', error);
         });
+
+        this.socket.on('close', () => {
+            super.emit('disconnected');
+        })
     }
 
     connect(host, port) {
